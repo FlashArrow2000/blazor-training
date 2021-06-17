@@ -1,0 +1,124 @@
+﻿@page "/"
+@using System.Timers
+@implements IDisposable
+<h1>Piedra, Papel y Tijera</h1>
+
+@if (!string.IsNullOrEmpty(resultadoMensaje))
+{
+    <h3 style="color: @resultadoMensajeColor">@resultadoMensaje</h3>
+}
+
+<button class="btn btn-info" @onclick="Reiniciar">Reinicar</button>
+
+<div style="display:flex; justify-content:center; margin-bottom:20px">
+    <img src="@jugadaOponente.Imagen" class="imagen" />
+</div>
+
+<div style="display:flex; justify-content:space-around; ">
+    @foreach (var jugada in jugadas)
+    {
+        <img src="@jugada.Imagen" class="imagen imagen-seleccionable" @onclick="@(() => SeleccionarJugada(jugada))" />
+    }
+</div>
+
+
+@code{ 
+
+    List<Jugada> jugadas = new List<Jugada>()
+    {
+        new Jugada{Imagen = "piedra.jpg", OpcionPPT = OpcionPPT.Piedra, VenceA = OpcionPPT.Tijera, PierdeContra = OpcionPPT.Papel },
+        new Jugada{Imagen = "tijeras.jpg", OpcionPPT = OpcionPPT.Tijera, VenceA = OpcionPPT.Papel, PierdeContra = OpcionPPT.Piedra},
+        new Jugada{Imagen = "papel.jpg", OpcionPPT = OpcionPPT.Papel, VenceA = OpcionPPT.Piedra, PierdeContra = OpcionPPT.Tijera}
+    };
+
+    Jugada jugadaOponente;
+    String resultadoMensaje;
+    String resultadoMensajeColor;
+    Timer timer;
+
+    protected override void OnInitialized()
+    {
+        jugadaOponente = jugadas[0];
+        timer = new Timer();
+        timer.Interval = 80;
+        timer.Elapsed += TimerOnElaped;
+        timer.Start();
+    }
+
+    private void Reiniciar()
+    {
+        timer.Start();
+        resultadoMensaje = null;
+        resultadoMensajeColor = null;
+    }
+
+    private void SeleccionarJugada( Jugada jugada)
+    {
+        timer.Stop();
+        var result = jugada.JugarContra(jugadaOponente);
+
+        if (result == StatusJuego.Victoria)
+        {
+            resultadoMensaje = "¡Ganaste!";
+            resultadoMensajeColor = "green";
+        }
+        else if (result == StatusJuego.Derrota)
+        {
+            resultadoMensaje = "¡Perdiste!";
+            resultadoMensajeColor = "red";
+        }
+        else{
+            resultadoMensaje = "¡Empate!";
+            resultadoMensajeColor = "black";
+        }
+    }
+
+    int indiceJugadaOponente = 0;
+
+    private void TimerOnElaped(object sender, ElapsedEventArgs e)
+    {
+        indiceJugadaOponente = (indiceJugadaOponente + 1) % jugadas.Count;
+        jugadaOponente = jugadas[indiceJugadaOponente];
+        StateHasChanged();//Con esto le decimos a blazor que se debe de re-renderizar el componente
+    }
+
+    class Jugada
+    {
+        public OpcionPPT OpcionPPT { get; set; }
+        public OpcionPPT VenceA { get; set; }
+        public OpcionPPT PierdeContra { get; set; }
+        public string Imagen { get; set; }
+        public StatusJuego JugarContra(Jugada jugada2)
+        {
+            if (OpcionPPT == jugada2.OpcionPPT)
+            {
+                return StatusJuego.Empate;
+            }
+
+            if (VenceA == jugada2.OpcionPPT)
+            {
+                return StatusJuego.Victoria;
+            }
+
+            return StatusJuego.Derrota;
+        }
+    }
+
+    enum OpcionPPT
+    {
+        Piedra, Papel, Tijera
+    }
+
+    enum StatusJuego
+    {
+        Victoria, Derrota, Empate
+    }
+
+    public void Dispose()//Estp es para desposar los recursos del navegado a esta funcion, asi ahorra recursos
+    {
+        if (timer != null)
+        {
+            timer.Dispose();
+        }
+    }
+}
